@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>寿司打 成績管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --text: #1a1814;
+    --text2: #5a564e;
+    --text3: #9a9590;
+    --accent: #c84b2f;
+    --accent-soft: #fbe9e4;
+    --accent2: #2c6e55;
+    --accent2-soft: #e4f0eb;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.06);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18160f;
+      --surface: #231f17;
+      --surface2: #2c2820;
+      --text: #f0ede6;
+      --text2: #a09890;
+      --text3: #66625a;
+      --accent: #e8624a;
+      --accent-soft: #3a1f18;
+      --accent2: #4da87a;
+      --accent2-soft: #1a2e24;
+      --border: rgba(255,255,255,0.10);
+      --border2: rgba(255,255,255,0.06);
+    }
+  }
+
+  html, body { height: 100%; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .header-title span { color: var(--accent); }
+  .header-count {
+    font-size: 12px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 4px 10px;
+    border-radius: 99px;
+  }
+
+  /* ── Layout ── */
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .tab svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 4px rgba(200,75,47,0.35);
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ── Input Form ── */
+  .form-title {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    letter-spacing: 0.02em;
+  }
+  .field input, .field select, .field textarea {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9590' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,75,47,0.12);
+  }
+  .field input::placeholder, .field textarea::placeholder { color: var(--text3); }
+
+  .btn-submit {
+    width: 100%;
+    padding: 12px;
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.05em;
+  }
+  .btn-submit:hover { opacity: 0.88; }
+  .btn-submit:active { transform: scale(0.98); }
+
+  /* ── Metrics ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .metric .mlabel {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .metric .mvalue {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1;
+  }
+  .metric .munit { font-size: 13px; font-weight: 400; margin-left: 2px; }
+  .metric .msub { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+  /* ── Chart ── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .chart-wrap { position: relative; height: 200px; }
+
+  .chart-range-btns { display: flex; gap: 4px; }
+  .range-btn {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .range-btn:hover { color: var(--text2); border-color: var(--border); background: var(--surface2); }
+  .range-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 20px 0 10px;
+  }
+
+  /* ── Record list ── */
+  .records { display: flex; flex-direction: column; gap: 6px; }
+  .record {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .record:hover { border-color: var(--border2); }
+  .rank-badge {
+    font-size: 16px;
+    min-width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .record-info { flex: 1; min-width: 0; }
+  .record-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+  }
+  .record-score {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    color: var(--text);
+  }
+  .score-diff {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+  }
+  .diff-pos { background: var(--accent2-soft); color: var(--accent2); }
+  .diff-neg { background: var(--accent-soft); color: var(--accent); }
+  .diff-zero { background: var(--surface2); color: var(--text3); }
+  .mode-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .record-meta {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .meta-item {
+    font-size: 12px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .meta-item svg { width: 11px; height: 11px; }
+  .del-btn {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--text3);
+    padding: 5px 7px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+  .del-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .del-btn svg { width: 14px; height: 14px; }
+
+  /* ── Ranking controls ── */
+  .rank-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .rank-controls select {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 30px 8px 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9590' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    flex: 1;
+    min-width: 140px;
+  }
+  .rank-controls select:focus { border-color: var(--accent); }
+
+  /* ── Empty ── */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+    font-size: 14px;
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: var(--surface);
+    padding: 10px 20px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .field.full { grid-column: 1; }
+    .tab span { display: none; }
+    .app { padding: 16px 12px 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">🍣 <span>寿司打</span>成績管理</div>
+  <div class="header-count" id="header-count">0 回プレイ</div>
+</header>
+
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('input')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span>記録する</span>
+    </button>
+    <button class="tab" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>成績・分析</span>
+    </button>
+    <button class="tab" onclick="switchTab('ranking')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+      <span>ランキング</span>
+    </button>
+  </div>
+
+  <!-- Input -->
+  <div id="tab-input" class="section active">
+    <div class="card">
+      <div class="form-title">📝 プレイ結果を記録</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>コース</label>
+          <select id="f-mode">
+            <option value="easy">🟢 かんたん（3,000円）</option>
+            <option value="normal" selected>🟡 普通（5,000円）</option>
+            <option value="hard">🔴 むずかしい（10,000円）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>スコア（円）</label>
+          <input type="number" id="f-score" placeholder="例: 5240" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>正しく打ったキー数</label>
+          <input type="number" id="f-correct" placeholder="例: 312" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>平均キータイプ数（回/秒）</label>
+          <input type="number" id="f-kps" placeholder="例: 4.7" step="0.1" min="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>ミスタイプ数</label>
+          <input type="number" id="f-miss" placeholder="例: 3" min="0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>日付</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field full">
+          <label>メモ（任意）</label>
+          <input type="text" id="f-memo" placeholder="コンディションや気づきなど…">
+        </div>
+      </div>
+      <button class="btn-submit" onclick="saveRecord()">記録する →</button>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="tab-history" class="section">
+    <div class="metrics" id="metrics-area">
+      <div class="metric"><div class="mlabel">最高スコア</div><div class="mvalue">—</div></div>
+      <div class="metric"><div class="mlabel">平均スコア</div><div class="mvalue">—</div></div>
+      <div class="metric"><div class="mlabel">最高KPM</div><div class="mvalue">—</div></div>
+      <div class="metric"><div class="mlabel">平均正確率</div><div class="mvalue">—</div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">スコア推移</div>
+        <div class="chart-range-btns">
+          <button class="range-btn active" data-range="20" onclick="setRange(this)">直近20回</button>
+          <button class="range-btn" data-range="100" onclick="setRange(this)">直近100回</button>
+          <button class="range-btn" data-range="all" onclick="setRange(this)">全成績</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="scoreChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-label">最近の記録</div>
+    <div class="records" id="recent-list"></div>
+  </div>
+
+  <!-- Ranking -->
+  <div id="tab-ranking" class="section">
+    <div class="rank-controls">
+      <select id="rank-mode" onchange="renderRanking()">
+        <option value="all">🏆 全コース</option>
+        <option value="easy">🟢 かんたん</option>
+        <option value="normal">🟡 普通</option>
+        <option value="hard">🔴 むずかしい</option>
+      </select>
+      <select id="rank-sort" onchange="renderRanking()">
+        <option value="score">スコア順</option>
+        <option value="kps">キータイプ数順</option>
+        <option value="correct">正解キー数順</option>
+        <option value="date">日付順（新しい順）</option>
+      </select>
+    </div>
+    <div class="records" id="ranking-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">🍣 記録しました！</div>
+
+<script>
+const MODES = {
+  easy:   { label: 'かんたん', base: 3000, emoji: '🟢' },
+  normal: { label: '普通',     base: 5000, emoji: '🟡' },
+  hard:   { label: 'むずかしい', base: 10000, emoji: '🔴' },
+};
+const STORAGE = 'sushida_v3';
+let records = [];
+let chartInstance = null;
+let chartRange = 20;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE);
+    if (raw) records = JSON.parse(raw);
+    // v2データの移行（kpm→kps, acc→削除）
+    records = records.map(r => {
+      if (r.kpm != null && r.kps == null) { r.kps = +(r.kpm / 60).toFixed(2); delete r.kpm; }
+      if (r.acc != null) delete r.acc;
+      return r;
+    });
+  } catch(e) { records = []; }
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  renderAll();
+}
+
+function persist() {
+  localStorage.setItem(STORAGE, JSON.stringify(records));
+}
+
+function saveRecord() {
+  const score = parseInt(document.getElementById('f-score').value);
+  if (!score || isNaN(score)) { alert('スコアを入力してください'); return; }
+  const correctRaw = document.getElementById('f-correct').value;
+  const kpsRaw = document.getElementById('f-kps').value;
+  const missRaw = document.getElementById('f-miss').value;
+  records.push({
+    id: Date.now(),
+    mode: document.getElementById('f-mode').value,
+    score,
+    correct: correctRaw ? parseInt(correctRaw) : null,
+    kps: kpsRaw ? parseFloat(kpsRaw) : null,
+    miss: missRaw ? parseInt(missRaw) : null,
+    date: document.getElementById('f-date').value,
+    memo: document.getElementById('f-memo').value.trim()
+  });
+  persist();
+  ['f-score','f-correct','f-kps','f-miss','f-memo'].forEach(id => document.getElementById(id).value = '');
+  showToast();
+  renderAll();
+  switchTab('history');
+}
+
+function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  records = records.filter(r => r.id !== id);
+  persist();
+  renderAll();
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function switchTab(name) {
+  ['input','history','ranking'].forEach((n, i) => {
+    document.querySelectorAll('.tab')[i].classList.toggle('active', n === name);
+    document.getElementById('tab-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'history') renderHistory();
+  if (name === 'ranking') renderRanking();
+}
+
+function setRange(btn) {
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  chartRange = btn.dataset.range === 'all' ? 'all' : parseInt(btn.dataset.range);
+  renderChart();
+}
+
+function renderAll() {
+  renderHistory();
+  renderRanking();
+  document.getElementById('header-count').textContent = `${records.length} 回プレイ`;
+}
+
+function renderHistory() {
+  const m = document.getElementById('metrics-area');
+  if (!records.length) {
+    m.innerHTML = '<p class="empty" style="grid-column:1/-1"><div class="empty-icon">🍣</div>まだ記録がありません</p>';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    document.getElementById('recent-list').innerHTML = '';
+    return;
+  }
+
+  const scores = records.map(r => r.score);
+  const best = Math.max(...scores);
+  const avg = Math.round(scores.reduce((a,b) => a+b, 0) / scores.length);
+  const kpss = records.map(r => r.kps).filter(v => v != null);
+  const bestKps = kpss.length ? Math.max(...kpss).toFixed(1) : null;
+  const corrects = records.map(r => r.correct).filter(v => v != null);
+  const bestCorrect = corrects.length ? Math.max(...corrects) : null;
+
+  const bestRec = records.find(r => r.score === best);
+  m.innerHTML = `
+    <div class="metric">
+      <div class="mlabel">最高スコア</div>
+      <div class="mvalue">${best.toLocaleString()}<span class="munit">円</span></div>
+      <div class="msub">${bestRec ? MODES[bestRec.mode]?.label ?? '' : ''} · ${bestRec?.date || ''}</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">平均スコア</div>
+      <div class="mvalue">${avg.toLocaleString()}<span class="munit">円</span></div>
+      <div class="msub">${records.length}回の平均</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">最高キータイプ数</div>
+      <div class="mvalue">${bestKps ?? '—'}<span class="munit">${bestKps ? '回/秒' : ''}</span></div>
+      <div class="msub">${kpss.length ? `${kpss.length}回計測` : '未記録'}</div>
+    </div>
+    <div class="metric">
+      <div class="mlabel">最多正解キー数</div>
+      <div class="mvalue">${bestCorrect ?? '—'}<span class="munit">${bestCorrect != null ? '打' : ''}</span></div>
+      <div class="msub">${corrects.length ? `${corrects.length}回計測` : '未記録'}</div>
+    </div>
+  `;
+
+  renderChart();
+
+  const recent = [...records].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,15);
+  document.getElementById('recent-list').innerHTML = recent.map(r => recordHTML(r, false)).join('');
+}
+
+function renderChart() {
+  const sorted = [...records].sort((a,b) => new Date(a.date) - new Date(b.date) || a.id - b.id);
+  const sliced = chartRange === 'all' ? sorted : sorted.slice(-chartRange);
+  const labels = sliced.map((r, i) => {
+    if (chartRange === 'all' && sliced.length > 50) return i % Math.ceil(sliced.length / 20) === 0 ? r.date.slice(5).replace('-','/') : '';
+    return r.date.slice(5).replace('-','/');
+  });
+  const data = sliced.map(r => r.score);
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const lineColor = isDark ? '#e8624a' : '#c84b2f';
+  const fillColor = isDark ? 'rgba(232,98,74,0.15)' : 'rgba(200,75,47,0.12)';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const textColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('scoreChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'スコア',
+        data,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        fill: true,
+        tension: 0.35,
+        pointRadius: data.length <= 20 ? 4 : data.length <= 50 ? 2 : 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: lineColor,
+        pointBorderColor: isDark ? '#231f17' : '#fff',
+        pointBorderWidth: 2,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => sliced[ctx[0].dataIndex]?.date || '',
+            label: ctx => `  ${ctx.parsed.y.toLocaleString()}円`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 11 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 },
+          grid: { color: gridColor }
+        },
+        y: {
+          ticks: { color: textColor, font: { size: 11 }, callback: v => v.toLocaleString() },
+          grid: { color: gridColor }
+        }
+      }
+    }
+  });
+}
+
+function renderRanking() {
+  const modeF = document.getElementById('rank-mode')?.value || 'all';
+  const sortF = document.getElementById('rank-sort')?.value || 'score';
+  let list = modeF === 'all' ? [...records] : records.filter(r => r.mode === modeF);
+  if (sortF === 'score') list.sort((a,b) => b.score - a.score);
+  else if (sortF === 'kps') list.sort((a,b) => (b.kps||0) - (a.kps||0));
+  else if (sortF === 'correct') list.sort((a,b) => (b.correct||0) - (a.correct||0));
+  else list.sort((a,b) => new Date(b.date) - new Date(a.date));
+  const el = document.getElementById('ranking-list');
+  el.innerHTML = list.length
+    ? list.slice(0, 30).map((r, i) => recordHTML(r, true, i+1)).join('')
+    : '<div class="empty"><div class="empty-icon">🍣</div>記録がありません</div>';
+}
+
+function recordHTML(r, showRank, rank) {
+  const m = MODES[r.mode] || MODES.normal;
+  const diff = r.score - m.base;
+  const diffCls = diff > 0 ? 'diff-pos' : diff < 0 ? 'diff-neg' : 'diff-zero';
+  const diffLabel = diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+
+  let rankBadge = '';
+  if (showRank) {
+    const icon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `<span style="font-size:12px;color:var(--text3);font-weight:700">${rank}</span>`;
+    rankBadge = `<div class="rank-badge">${icon}</div>`;
+  }
+
+  const kpsMeta = r.kps != null ? `<span class="meta-item">${r.kps}回/秒</span>` : '';
+  const correctMeta = r.correct != null ? `<span class="meta-item">正解 ${r.correct}打</span>` : '';
+  const missMeta = r.miss != null ? `<span class="meta-item">ミス ${r.miss}</span>` : '';
+  const memoMeta = r.memo ? `<span class="meta-item" style="color:var(--text3)">📝 ${r.memo}</span>` : '';
+
+  return `<div class="record">
+    ${rankBadge}
+    <div class="record-info">
+      <div class="record-top">
+        <span class="record-score">${r.score.toLocaleString()}円</span>
+        <span class="score-diff ${diffCls}">${diffLabel}</span>
+        <span class="mode-pill">${m.emoji} ${m.label}</span>
+      </div>
+      <div class="record-meta">
+        <span class="meta-item">${r.date}</span>
+        ${kpsMeta}${correctMeta}${missMeta}${memoMeta}
+      </div>
+    </div>
+    <button class="del-btn" onclick="deleteRecord(${r.id})" title="削除" aria-label="この記録を削除">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    </button>
+  </div>`;
+}
+
+load();
+</script>
+</body>
+</html>
